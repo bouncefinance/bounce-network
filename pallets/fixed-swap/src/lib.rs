@@ -67,11 +67,11 @@ decl_storage! {
 		NextPoolId get(fn next_pool_id): T::PoolId;
 
 		/// Details of a pool.
-		Pool: map hasher(blake2_128_concat) T::PoolId
+		Pool get(fn pools): map hasher(blake2_128_concat) T::PoolId
 			=> PoolDetails<T::AccountId, T::Balance, T::BlockNumber, T::TokenId>;
 
 		/// Swap records by a pool and an account.
-		Swap: double_map hasher(blake2_128_concat) T::PoolId, hasher(blake2_128_concat) T::AccountId
+		Swap get(fn swaps): double_map hasher(blake2_128_concat) T::PoolId, hasher(blake2_128_concat) T::AccountId
 			=> (T::Balance, T::Balance);
 
 		/// The end block number of a pool
@@ -152,7 +152,7 @@ decl_module! {
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let now = <frame_system::Module<T>>::block_number();
-				ensure!(pool.start_at.saturating_add(pool.duration) < now, Error::<T>::PoolExpired);
+				ensure!(now < pool.start_at.saturating_add(pool.duration), Error::<T>::PoolExpired);
 
 				let amount0 = amount1.saturating_mul(pool.total0) / pool.total1;
 				pool.swapped0 = pool.swapped0.saturating_add(amount0);
@@ -160,11 +160,11 @@ decl_module! {
 
 				T::Currency::unreserve(pool.token0, &pool.creator, amount0);
 				T::Currency::transfer(pool.token0, &pool.creator, &buyer, amount0)?;
-				T::Currency::transfer(pool.token1, &buyer, &pool.creator, amount0)?;
+				T::Currency::transfer(pool.token1, &buyer, &pool.creator, amount1)?;
 
 				Swap::<T>::try_mutate(pool_id, &buyer, |swap| -> DispatchResult {
-					swap.0 = swap.0.saturating_mul(amount0);
-					swap.1 = swap.1.saturating_mul(amount1);
+					swap.0 = swap.0.saturating_add(amount0);
+					swap.1 = swap.1.saturating_add(amount1);
 					Ok(())
 				})?;
 
