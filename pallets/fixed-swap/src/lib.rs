@@ -16,6 +16,8 @@ use frame_system::ensure_signed;
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
 
 mod default_weight;
+mod mock;
+mod tests;
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default)]
 pub struct PoolDetails<
